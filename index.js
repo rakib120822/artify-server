@@ -26,6 +26,7 @@ const client = new MongoClient(uri, {
   },
 });
 
+// token verification
 const verifyToken = async (req, res, next) => {
   const authorization = req.headers.authorization;
   if (!authorization) {
