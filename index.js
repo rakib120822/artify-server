@@ -1,6 +1,8 @@
 const express = require("express");
 const app = express();
 const cors = require("cors");
+const admin = require("firebase-admin");
+const serviceAccount = require("./serviceKey.json");
 require("dotenv").config();
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 
@@ -8,6 +10,10 @@ const port = process.env.PORT || 3000;
 //middleware
 app.use(express.json());
 app.use(cors());
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+});
 
 const uri = `mongodb+srv://${process.env.DB_USERNAME}:${process.env.DB_PASSWORD}@cluster0.fbeug99.mongodb.net/?appName=Cluster0`;
 
@@ -20,6 +26,22 @@ const client = new MongoClient(uri, {
   },
 });
 
+const verifyToken = async (req, res, next) => {
+  const authorization = req.headers.authorization;
+  if (!authorization) {
+    return res
+      .status(401)
+      .send({ message: "unauthorization access. token not found" });
+  }
+  const token = authorization.split(" ")[1];
+  try {
+    await admin.auth().verifyIdToken(token);
+    next();
+  } catch (err) {
+    return res.status(401).send("unauthorized access");
+  }
+};
+
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
@@ -29,6 +51,7 @@ async function run() {
     const artifyDB = client.db("artifyDB");
     const artworkCollection = artifyDB.collection("artworkCollection");
     const favoriteCollection = artifyDB.collection("favoriteCollection");
+    const userLikesCollection = artifyDB.collection("userLikesCollection");
 
     //middlewares
 
@@ -77,8 +100,18 @@ async function run() {
       res.send(result);
     });
 
+    //get latest art works
+    app.get("/artworks/latest", async (req, res) => {
+      const result = await artworkCollection
+        .find({})
+        .sort({ created_at: -1 })
+        .limit(6)
+        .toArray();
+      res.send(result);
+    });
+
     //get details of a artwork
-    app.get("/artwork/:id", async (req, res) => {
+    app.get("/artwork/:id", verifyToken, async (req, res) => {
       const { id } = req.params;
       const _id = new ObjectId(id);
       const result = await artworkCollection.findOne({ _id });
@@ -86,16 +119,16 @@ async function run() {
     });
 
     // get my artwork
-    app.get("/my-artworks", async (req, res) => {
+    app.get("/my-artworks", verifyToken, async (req, res) => {
       const { email } = req.query;
       const result = await artworkCollection
-        .find({ userEmail: email })
+        .find({ artist_email: email })
         .toArray();
       res.send(result);
     });
 
     // get favorite artworks
-    app.get("/favorite-artworks", async (req, res) => {
+    app.get("/favorite-artworks", verifyToken, async (req, res) => {
       const { email } = req.query;
       const favorites = await favoriteCollection
         .find({ userEmail: email })
@@ -108,14 +141,23 @@ async function run() {
       res.send(result);
     });
 
+    //get favorite artWork collection
+    app.get("/user/favorite-artworks", async (req, res) => {
+      const { email } = req.query;
+      const result = await favoriteCollection
+        .find({ userEmail: email })
+        .toArray();
+      res.send(result);
+    });
+
     // get artwork from search query
     app.get("/artworks/search", async (req, res) => {
-      const query = req.body.query || "";
+      const query = req.query.search || "";
       const result = await artworkCollection
         .find({
           $or: [
             { title: { $regex: query, $options: "i" } },
-            { userName: { $regex: query, $options: "i" } },
+            { artist_name: { $regex: query, $options: "i" } },
           ],
         })
         .toArray();
@@ -123,10 +165,22 @@ async function run() {
     });
 
     // add a favorite artwork
-    app.post("/favorite/:id", async (req, res) => {
+    app.post("/favorite/:id", verifyToken, async (req, res) => {
       const { email } = req.query;
       const { id } = req.params;
+      if (!email || !id) {
+        return res
+          .status(400)
+          .json({ message: "Email and artwork ID are required" });
+      }
 
+      const existing = await favoriteCollection.findOne({
+        userEmail: email,
+        id: new ObjectId(id),
+      });
+      if (existing) {
+        return res.status(200).json({ message: "Already in favorites" });
+      }
       const result = await favoriteCollection.insertOne({
         userEmail: email,
         id: new ObjectId(id),
@@ -136,7 +190,7 @@ async function run() {
     });
 
     // remove from favorite artworks
-    app.delete("/favorite/:id", async (req, res) => {
+    app.delete("/favorite/:id", verifyToken, async (req, res) => {
       const { id } = req.params;
       const email = req.query.email;
       const result = await favoriteCollection.deleteOne({
@@ -145,20 +199,95 @@ async function run() {
       });
       res.send(result);
     });
+    //get likes
+    app.get("/user/likes", async (req, res) => {
+      const { email } = req.query;
 
-    // update like numbers
-    app.patch("/artwork/:id", async (req, res) => {
-      const { id } = req.params;
-      const result = await artworkCollection.updateOne(
-        { _id: new ObjectId(id) },
-        { $inc: { price: 10 } }
-      );
+      const result = await userLikesCollection.find({ email }).toArray();
 
       res.send(result);
     });
 
+    // update like numbers
+    app.put("/artwork/like/:id", verifyToken, async (req, res) => {
+      const { id } = req.params;
+      const { email } = req.query;
+      try {
+        // Find user likes
+        let user = await userLikesCollection.findOne({ email });
+
+        if (user) {
+          let likedBefore = user.likes.some((like) => like.toString() === id);
+
+          if (likedBefore) {
+            // Unlike: decrement artwork like
+            const result = await artworkCollection.updateOne(
+              { _id: new ObjectId(id) },
+              { $inc: { like: -1 } }
+            );
+
+            // Remove artwork from user's likes
+            user.likes = user.likes.filter((like) => like.toString() !== id);
+          } else {
+            // Like: increment artwork like
+            await artworkCollection.updateOne(
+              { _id: new ObjectId(id) },
+              { $inc: { like: 1 } }
+            );
+
+            user.likes.push(new ObjectId(id));
+          }
+
+          // Update user document in MongoDB
+          await userLikesCollection.updateOne(
+            { email },
+            { $set: { likes: user.likes } }
+          );
+
+          const result = await userLikesCollection.findOne({ email });
+          const artworkObject = await artworkCollection.findOne({
+            _id: new ObjectId(id),
+          });
+          res.json({
+            message: likedBefore ? "Unliked" : "Liked",
+            result,
+            artworkObject,
+          });
+        } else {
+          // New user document
+          const newDoc = {
+            email,
+            likes: [new ObjectId(id)],
+          };
+
+          await userLikesCollection.insertOne(newDoc);
+
+          // Increment artwork like
+          await artworkCollection.updateOne(
+            { _id: new ObjectId(id) },
+            { $inc: { like: 1 } }
+          );
+
+          const result = await userLikesCollection.findOne({ email });
+          const artworkObject = await artworkCollection.findOne({
+            _id: new ObjectId(id),
+          });
+          res.json({
+            message: likedBefore ? "Unliked" : "Liked",
+            result,
+            artworkObject,
+          });
+
+          res.json({ message: "Liked" });
+        }
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Failed to update like" });
+      }
+    });
+
     // update user artwork
-    app.put("/artwork/:id", verifyOwner, async (req, res) => {
+    app.put("/artwork/:id", verifyToken, verifyOwner, async (req, res) => {
       const filter = { _id: req.artwork._id };
       const updateData = { $set: req.body };
       const result = await artworkCollection.updateOne(filter, updateData);
@@ -166,15 +295,15 @@ async function run() {
     });
 
     // add a new artwork
-    app.post("/artworks", async (req, res) => {
+    app.post("/artworks", verifyToken, async (req, res) => {
       const artwork = req.body;
       const result = await artworkCollection.insertOne(artwork);
       res.send(result);
     });
 
     // delete a artwork
-    app.delete("/artwork/:id", verifyOwner, async (req, res) => {
-      const artwork = req.artwork; 
+    app.delete("/artwork/:id", verifyToken, verifyOwner, async (req, res) => {
+      const artwork = req.artwork;
       await artworkCollection.deleteOne({ _id: artwork._id });
       res.send("Deleted successfully");
     });
