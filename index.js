@@ -46,13 +46,14 @@ const verifyToken = async (req, res, next) => {
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    // await client.connect();
 
     // database create
     const artifyDB = client.db("artifyDB");
     const artworkCollection = artifyDB.collection("artworkCollection");
     const favoriteCollection = artifyDB.collection("favoriteCollection");
     const userLikesCollection = artifyDB.collection("userLikesCollection");
+    const userCollection = artifyDB.collection("userCollection");
 
     //middlewares
 
@@ -77,7 +78,7 @@ async function run() {
             .send({ success: false, message: "Artwork not found" });
         }
 
-        if (artwork.userEmail !== email) {
+        if (artwork.artist_email !== email) {
           return res.status(403).send({
             success: false,
             message: "Forbidden — you are not the owner",
@@ -92,12 +93,43 @@ async function run() {
       }
     };
 
+    const verifyAdmin = async (req, res, next) => {
+      const { email } = req.query;
+      const user = await userCollection.findOne({ email });
+
+      if (user?.role !== "admin") {
+        return res.status(403).send({
+          success: false,
+          message: "Forbidden — you are not the admin",
+        });
+      }
+      next();
+    };
+
     //routes
 
     // get all art works
     app.get("/artworks", async (req, res) => {
-      const result = await artworkCollection.find({}).toArray();
-      res.send(result);
+      const { limit = 10, page = 0 } = req.query;
+      const length = await artworkCollection.countDocuments();
+
+      const result = await artworkCollection
+        .find({ adminApproval: "approved" })
+        .project({
+          artist_image: 0,
+          followers: 0,
+          created_at: 0,
+          artist_email: 0,
+          price: 0,
+
+          visibility: 0,
+          description: 0,
+          medium: 0,
+        })
+        .limit(parseInt(limit))
+        .skip(parseInt(page))
+        .toArray();
+      res.send({ data: result, totalArtworks: length });
     });
 
     //get latest art works
@@ -124,9 +156,31 @@ async function run() {
       const result = await artworkCollection
         .find({ artist_email: email })
         .toArray();
-      res.send(result);
+      const favorites = await favoriteCollection.countDocuments({
+        userEmail: email,
+      });
+
+      const pending = result.filter((art) => art.visibility === "pending");
+      const approved = result.filter((art) => art.visibility === "approved");
+      const rejected = result.filter((art) => art.visibility === "rejected");
+      res.send({
+        data: result,
+        totalArtworks: result.length || 0,
+        pending: pending.length || 0,
+        approved: approved.length || 0,
+        rejected: rejected.length || 0,
+        favorites: favorites || 0,
+      });
     });
 
+    // approve artwork
+    app.get("/approved-artworks", verifyToken, async (req, res) => {
+      const { email } = req.query;
+      const result = await artworkCollection
+        .find({ artist_email: email, adminApproval: "approved" })
+        .toArray();
+      res.send(result);
+    });
     // get favorite artworks
     app.get("/favorite-artworks", verifyToken, async (req, res) => {
       const { email } = req.query;
@@ -140,9 +194,33 @@ async function run() {
         .toArray();
       res.send(result);
     });
+    // get pending artworks
+    app.get("/pending-artworks", verifyToken, async (req, res) => {
+      const { email } = req.query;
+      const result = await artworkCollection
+        .find({ adminApproval: "pending" })
+        .toArray();
+      res.send(result || {});
+    });
+
+    // update approval status
+    app.patch(
+      "/artworks/approve/:id",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        const { id } = req.params;
+        const { status } = req.query;
+        const result = await artworkCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { $set: { adminApproval: status } }
+        );
+        res.send(result);
+      }
+    );
 
     //get favorite artWork collection
-    app.get("/user/favorite-artworks", async (req, res) => {
+    app.get("/user/favorite-artworks", verifyToken, async (req, res) => {
       const { email } = req.query;
       const result = await favoriteCollection
         .find({ userEmail: email })
@@ -297,6 +375,7 @@ async function run() {
     // add a new artwork
     app.post("/artworks", verifyToken, async (req, res) => {
       const artwork = req.body;
+      artwork.adminApproval = "pending";
       const result = await artworkCollection.insertOne(artwork);
       res.send(result);
     });
@@ -308,8 +387,34 @@ async function run() {
       res.send("Deleted successfully");
     });
 
+    //user api
+    app.post("/users", async (req, res) => {
+      const user = req.body;
+      const existingUser = await userCollection.findOne({ email: user.email });
+
+      if (existingUser) {
+        return res.status(200).send({ message: "User already exists" });
+      }
+      user.role = "user";
+      const result = await userCollection.insertOne(user);
+      res.send(result);
+    });
+
+    app.get("/users", verifyToken, async (req, res) => {
+      const { email } = req.query;
+      const user = await userCollection.findOne({ email });
+      res.send(user);
+    });
+
+    app.patch("/user",verifyToken,async(req,res)=>{
+      const {email} = req.query;
+      const updateData = { $set: req.body };
+      const result = await userCollection.updateOne({email},updateData);
+      res.send(result);
+    } );
+
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
+    // await client.db("admin").command({ ping: 1 });
   } finally {
     // Ensures that the client will close when you finish/error
   }
