@@ -15,7 +15,7 @@ admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
 });
 
-const uri = `mongodb+srv://${process.env.DB_USERNAME}:${process.env.DB_PASSWORD}@cluster0.fbeug99.mongodb.net/?appName=Cluster0`;
+
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
@@ -35,6 +35,10 @@ const verifyToken = async (req, res, next) => {
       .send({ message: "unauthorization access. token not found" });
   }
   const token = authorization.split(" ")[1];
+  if (!token) {
+    return res.status(401).send("unauthorized access");
+  }
+
   try {
     await admin.auth().verifyIdToken(token);
     next();
@@ -109,28 +113,7 @@ async function run() {
     //routes
 
     // get all art works
-    app.get("/artworks", async (req, res) => {
-      const { limit = 10, page = 0 } = req.query;
-      const length = await artworkCollection.countDocuments();
-
-      const result = await artworkCollection
-        .find({ adminApproval: "approved" })
-        .project({
-          artist_image: 0,
-          followers: 0,
-          created_at: 0,
-          artist_email: 0,
-          price: 0,
-
-          visibility: 0,
-          description: 0,
-          medium: 0,
-        })
-        .limit(parseInt(limit))
-        .skip(parseInt(page))
-        .toArray();
-      res.send({ data: result, totalArtworks: length });
-    });
+   
 
     //get latest art works
     app.get("/artworks/latest", async (req, res) => {
@@ -143,7 +126,7 @@ async function run() {
     });
 
     //get details of a artwork
-    app.get("/artwork/:id", verifyToken, async (req, res) => {
+    app.get("/artwork/:id", async (req, res) => {
       const { id } = req.params;
       const _id = new ObjectId(id);
       const result = await artworkCollection.findOne({ _id });
@@ -163,6 +146,7 @@ async function run() {
       const pending = result.filter((art) => art.visibility === "pending");
       const approved = result.filter((art) => art.visibility === "approved");
       const rejected = result.filter((art) => art.visibility === "rejected");
+      
       res.send({
         data: result,
         totalArtworks: result.length || 0,
@@ -280,7 +264,6 @@ async function run() {
     //get likes
     app.get("/user/likes", async (req, res) => {
       const { email } = req.query;
-
       const result = await userLikesCollection.find({ email }).toArray();
 
       res.send(result);
@@ -406,12 +389,12 @@ async function run() {
       res.send(user);
     });
 
-    app.patch("/user",verifyToken,async(req,res)=>{
-      const {email} = req.query;
+    app.patch("/user", verifyToken, async (req, res) => {
+      const { email } = req.query;
       const updateData = { $set: req.body };
-      const result = await userCollection.updateOne({email},updateData);
+      const result = await userCollection.updateOne({ email }, updateData);
       res.send(result);
-    } );
+    });
 
     // Send a ping to confirm a successful connection
     // await client.db("admin").command({ ping: 1 });
