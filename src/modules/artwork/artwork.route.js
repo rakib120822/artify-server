@@ -4,6 +4,7 @@ import { Router } from "express";
 const router = Router();
 
 router.get("/", artWorkController.getAllArtwork);
+router.get("/latest", artWorkController.getLatestArtwork);
 
 router.post("/", artWorkController.createArtWork);
 

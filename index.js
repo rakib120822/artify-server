@@ -116,14 +116,7 @@ async function run() {
    
 
     //get latest art works
-    app.get("/artworks/latest", async (req, res) => {
-      const result = await artworkCollection
-        .find({})
-        .sort({ created_at: -1 })
-        .limit(6)
-        .toArray();
-      res.send(result);
-    });
+    
 
     //get details of a artwork
     app.get("/artwork/:id", async (req, res) => {

@@ -18,25 +18,6 @@ const createArtWorkIntoDb = async (payload) => {
 
 const getAllArtworkFromDb = async (limit, page) => {
   const length = await Artwork.countDocuments();
-  //   const totalArtworks = length[]
-  console.log("length : ", length);
-
-  //   const result = await artworkCollection
-  //     .find({ adminApproval: "approved" })
-  //     .project({
-  //       artist_image: 0,
-  //       followers: 0,
-  //       created_at: 0,
-  //       artist_email: 0,
-  //       price: 0,
-  //       visibility: 0,
-  //       description: 0,
-  //       medium: 0,
-  //     })
-  //     .limit(parseInt(limit))
-  //     .skip(parseInt(page))
-  //     .toArray();
-
   const result = await Artwork.find({ adminApproval: "pending" })
     .skip(page * limit)
     .limit(limit);
@@ -47,9 +28,18 @@ const getAllArtworkFromDb = async (limit, page) => {
   return { result, length };
 };
 
+const getLatestArtworkFromDb = async () => {
+  const result = await Artwork.find().sort({ created_at: -1 }).limit(6);
+  if (!result) {
+    throw new Error("Not Found");
+  }
+  return result;
+};
+
 const artworkService = {
   createArtWorkIntoDb,
   getAllArtworkFromDb,
+  getLatestArtworkFromDb,
 };
 
 export default artworkService;

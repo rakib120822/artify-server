@@ -42,9 +42,28 @@ const getAllArtwork = async (req, res) => {
   }
 };
 
+const getLatestArtwork = async (req, res) => {
+  try {
+    const result = await artworkService.getLatestArtworkFromDb();
+    res.status(200).json({
+      success: true,
+      statusCode: 200,
+      message: "Retrieved Successfully",
+      data: result,
+    });
+  } catch (error) {
+    res.status(404).json({
+      success: false,
+      message: error.message,
+      data: error,
+    });
+  }
+};
+
 const artWorkController = {
   createArtWork,
   getAllArtwork,
+  getLatestArtwork,
 };
 
 export default artWorkController;
