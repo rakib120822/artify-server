@@ -60,10 +60,33 @@ const getLatestArtwork = async (req, res) => {
   }
 };
 
+const getArtworkById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!id) {
+      throw new Error("Invalid Artwork");
+    }
+    const result = await artworkService.getArtworkByIdFromDb(id);
+    res.status(200).json({
+      success: true,
+      statusCode: 200,
+      message: "Retrieved Successfully",
+      data: result,
+    });
+  } catch (error) {
+    res.status(404).json({
+      success: false,
+      message: error.message,
+      data: error,
+    });
+  }
+};
+
 const artWorkController = {
   createArtWork,
   getAllArtwork,
   getLatestArtwork,
+  getArtworkById,
 };
 
 export default artWorkController;

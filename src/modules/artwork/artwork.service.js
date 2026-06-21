@@ -36,10 +36,20 @@ const getLatestArtworkFromDb = async () => {
   return result;
 };
 
+const getArtworkByIdFromDb = async (id) => {
+  const result = await Artwork.findById(id);
+  if (!result) {
+    throw new Error("Not Found!");
+  }
+
+  return result;
+};
+
 const artworkService = {
   createArtWorkIntoDb,
   getAllArtworkFromDb,
   getLatestArtworkFromDb,
+  getArtworkByIdFromDb,
 };
 
 export default artworkService;

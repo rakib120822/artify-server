@@ -119,12 +119,7 @@ async function run() {
     
 
     //get details of a artwork
-    app.get("/artwork/:id", async (req, res) => {
-      const { id } = req.params;
-      const _id = new ObjectId(id);
-      const result = await artworkCollection.findOne({ _id });
-      res.send(result);
-    });
+    
 
     // get my artwork
     app.get("/my-artworks", verifyToken, async (req, res) => {

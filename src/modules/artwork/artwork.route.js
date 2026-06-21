@@ -5,6 +5,7 @@ const router = Router();
 
 router.get("/", artWorkController.getAllArtwork);
 router.get("/latest", artWorkController.getLatestArtwork);
+router.get("/:id", artWorkController.getArtworkById);
 
 router.post("/", artWorkController.createArtWork);
 
