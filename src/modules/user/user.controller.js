@@ -44,9 +44,33 @@ const getUser = async (req, res) => {
   }
 };
 
+const updateUser = async (req, res) => {
+  try {
+    const { email } = req.query;
+    const { name, image } = req.body;
+    const updateData = { email, name, image };
+
+    const result = await userService.updatedUserIntoDB(updateData);
+    res.status(200).json({
+      success: true,
+      statusCode: 201,
+      message: "Updated Successfully",
+      data: result,
+    });
+  } catch (error) {
+    res.status(404).json({
+      success: false,
+      statusCode: 404,
+      message: error.message,
+      data: error,
+    });
+  }
+};
+
 const userController = {
   createUser,
-  getUser
+  getUser,
+  updateUser,
 };
 
 export default userController;

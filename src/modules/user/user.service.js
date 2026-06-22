@@ -21,9 +21,25 @@ const getUserFromDB = async (email) => {
   return user;
 };
 
+const updatedUserIntoDB = async (payload) => {
+  const { email, name, image } = payload;
+  const existingUser = await User.findOne({ email });
+  if (!existingUser) {
+    throw new Error("User Not Found");
+  }
+  const update = await User.findOneAndUpdate({ email }, { email, name, image });
+  if (!update) {
+    throw new Error("Update Failed");
+  }
+
+  const newUser = await User.findOne({ email });
+  return newUser;
+};
+
 const userService = {
   createUserIntoDB,
   getUserFromDB,
+  updatedUserIntoDB,
 };
 
 export default userService;

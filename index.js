@@ -338,16 +338,7 @@ async function run() {
     });
 
     //user api
-
-
     
-
-    app.patch("/user", verifyToken, async (req, res) => {
-      const { email } = req.query;
-      const updateData = { $set: req.body };
-      const result = await userCollection.updateOne({ email }, updateData);
-      res.send(result);
-    });
 
     // Send a ping to confirm a successful connection
     // await client.db("admin").command({ ping: 1 });
