@@ -21,8 +21,32 @@ const createUser = async (req, res) => {
   }
 };
 
+const getUser = async (req, res) => {
+  try {
+    const { email } = req.query;
+    if (!email) {
+      throw new Error("UnAuthorized!");
+    }
+    const result = await userService.getUserFromDB(email);
+    res.status(201).json({
+      success: true,
+      statusCode: 200,
+      message: "User Retrieved Successfully",
+      data: result,
+    });
+  } catch (error) {
+    res.status(404).json({
+      success: false,
+      statusCode: 404,
+      message: error.message,
+      data: error,
+    });
+  }
+};
+
 const userController = {
   createUser,
+  getUser
 };
 
 export default userController;

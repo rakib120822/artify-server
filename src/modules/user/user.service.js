@@ -13,8 +13,17 @@ const createUserIntoDB = async (payload) => {
   return result;
 };
 
+const getUserFromDB = async (email) => {
+  const user = await User.findOne({ email });
+  if (!user) {
+    throw new Error("User not found!");
+  }
+  return user;
+};
+
 const userService = {
   createUserIntoDB,
+  getUserFromDB,
 };
 
 export default userService;

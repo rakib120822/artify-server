@@ -340,11 +340,7 @@ async function run() {
     //user api
 
 
-    app.get("/users", verifyToken, async (req, res) => {
-      const { email } = req.query;
-      const user = await userCollection.findOne({ email });
-      res.send(user);
-    });
+    
 
     app.patch("/user", verifyToken, async (req, res) => {
       const { email } = req.query;
