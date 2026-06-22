@@ -82,6 +82,19 @@ const getArtworkById = async (req, res) => {
   }
 };
 
+const getMyArtwork = async (req, res) => {
+  const { email } = req.query;
+
+  res.send({
+    data: result,
+    totalArtworks: result.length || 0,
+    pending: pending.length || 0,
+    approved: approved.length || 0,
+    rejected: rejected.length || 0,
+    favorites: favorites || 0,
+  });
+};
+
 const artWorkController = {
   createArtWork,
   getAllArtwork,

@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import artworkRoutes from "./modules/artwork/artwork.route.js";
+import userRoutes from "./modules/user/user.route.js";
 
 const app = express();
 //middleware
@@ -12,5 +13,6 @@ app.get("/", (req, res) => {
 });
 
 app.use("/api/artworks", artworkRoutes);
+app.use("/api/users", userRoutes);
 
 export default app;

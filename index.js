@@ -122,28 +122,7 @@ async function run() {
     
 
     // get my artwork
-    app.get("/my-artworks", verifyToken, async (req, res) => {
-      const { email } = req.query;
-      const result = await artworkCollection
-        .find({ artist_email: email })
-        .toArray();
-      const favorites = await favoriteCollection.countDocuments({
-        userEmail: email,
-      });
-
-      const pending = result.filter((art) => art.visibility === "pending");
-      const approved = result.filter((art) => art.visibility === "approved");
-      const rejected = result.filter((art) => art.visibility === "rejected");
-      
-      res.send({
-        data: result,
-        totalArtworks: result.length || 0,
-        pending: pending.length || 0,
-        approved: approved.length || 0,
-        rejected: rejected.length || 0,
-        favorites: favorites || 0,
-      });
-    });
+   
 
     // approve artwork
     app.get("/approved-artworks", verifyToken, async (req, res) => {
@@ -359,17 +338,7 @@ async function run() {
     });
 
     //user api
-    app.post("/users", async (req, res) => {
-      const user = req.body;
-      const existingUser = await userCollection.findOne({ email: user.email });
 
-      if (existingUser) {
-        return res.status(200).send({ message: "User already exists" });
-      }
-      user.role = "user";
-      const result = await userCollection.insertOne(user);
-      res.send(result);
-    });
 
     app.get("/users", verifyToken, async (req, res) => {
       const { email } = req.query;

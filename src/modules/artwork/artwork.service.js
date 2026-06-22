@@ -45,6 +45,30 @@ const getArtworkByIdFromDb = async (id) => {
   return result;
 };
 
+const getMyArtworkFromDb = async () => {
+  // const result = await artworkCollection
+  //   .find({ artist_email: email })
+  //   .toArray();
+  // const favorites = await favoriteCollection.countDocuments({
+  //   userEmail: email,
+  // });
+
+  const artworks = await Artwork.find({ email });
+  if (!artworks) {
+    throw new Error("Not Found!");
+  }
+  const pending = artworks.filter((art) => art.visibility === "pending");
+  const approved = artworks.filter((art) => art.visibility === "approved");
+  const rejected = artworks.filter((art) => art.visibility === "rejected");
+
+  const result = {
+    pending,
+    approved,
+    rejected,
+  };
+  return result;
+};
+
 const artworkService = {
   createArtWorkIntoDb,
   getAllArtworkFromDb,
