@@ -336,10 +336,7 @@ async function run() {
       await artworkCollection.deleteOne({ _id: artwork._id });
       res.send("Deleted successfully");
     });
-
-    //user api
     
-
     // Send a ping to confirm a successful connection
     // await client.db("admin").command({ ping: 1 });
   } finally {

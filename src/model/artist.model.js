@@ -18,9 +18,11 @@ const artistSchema = new mongoose.Schema(
     },
     bio: {
       type: String,
+      default: "Write Something in Bio",
     },
     socialLink: {
       type: String,
+      required: true,
     },
     followers: {
       type: Number,
@@ -31,3 +33,6 @@ const artistSchema = new mongoose.Schema(
     timestamps: true,
   },
 );
+
+const Artist = new mongoose.model("Artist", artistSchema);
+export default Artist;
