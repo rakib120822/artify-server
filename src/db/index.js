@@ -5,9 +5,9 @@ const uri = config.mongodbUri;
 
 const connectDB = async () => {
   try {
-    console.log("Connecting to MongoDB...", uri);
     await mongoose.connect(uri);
-    console.log("Connected to MongoDB");
+    console.log("Connecting to MongoDB...", mongoose.connection.name);
+
   } catch (error) {
     console.error("Error connecting to MongoDB:", error);
     process.exit(1);

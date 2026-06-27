@@ -1,3 +1,4 @@
+
 import userService from "./user.service.js";
 
 const createUser = async (req, res) => {
@@ -66,6 +67,7 @@ const updateUser = async (req, res) => {
     });
   }
 };
+
 
 const userController = {
   createUser,

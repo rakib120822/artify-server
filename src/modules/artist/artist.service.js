@@ -20,5 +20,61 @@ const createArtistIntoDB = async (payload) => {
   return artist;
 };
 
-const artistService = { createArtistIntoDB };
+const updateArtistIntoDB = async (payload, id) => {
+  const { address, bio, socialLink, specialization, name, image } = payload;
+  const artist = await Artist.findByIdAndUpdate(
+    id,
+    {
+      address,
+      bio,
+      socialLink,
+      specialization,
+    },
+    { new: true },
+  );
+
+  if (name || image) {
+    await User.findByIdAndUpdate(artist.userId, {
+      name,
+      image,
+    });
+  }
+  const updatedArtist = await Artist.findById(id).populate("userId");
+  if (!updatedArtist) {
+    throw new Error("User not updated!");
+  }
+  return updatedArtist;
+};
+
+const updateAdminApproval = async (id, approval) => {
+  const artist = await Artist.findByIdAndUpdate(
+    { userId: id },
+    { adminApproval: approval },
+  );
+  if (!artist) {
+    throw new Error("Artist not found!");
+  }
+  return artist;
+};
+
+const deleteArtistFromDB = async (id) => {
+  await Artist.findByIdAndDelete({ userId: id });
+  return null;
+};
+
+const getArtistFromDB = async (id) => {
+  const artist = await Artist.findOne({ userId: id }).populate("userId");
+  if (!artist) {
+    throw new Error("Artist is not found!");
+  }
+  return artist;
+};
+
+const artistService = {
+  createArtistIntoDB,
+  updateArtistIntoDB,
+  deleteArtistFromDB,
+  getArtistFromDB,
+  updateAdminApproval,
+};
 export default artistService;

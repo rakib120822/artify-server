@@ -10,6 +10,7 @@ const artistSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
+      unique: true,
     },
     specialization: {
       type: String,
@@ -27,6 +28,12 @@ const artistSchema = new mongoose.Schema(
     followers: {
       type: Number,
       default: 0,
+    },
+
+    adminApproval: {
+      type: String,
+      enum: ["APPROVED", "PENDING", "REJECTED"],
+      default: "PENDING",
     },
   },
   {
